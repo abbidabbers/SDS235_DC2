@@ -5,12 +5,15 @@ date: "3/11/2021"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+# Packages needed to run code
 library(timetk)
 library(tidyverse)
 library(ggplot2)
 library(plotly)
+library(lubridate)
+library(gghighlight)
 ```
 
 ```{r, include = FALSE}
@@ -38,11 +41,6 @@ sun_comm <- read_csv("comm-data-Sun.csv",
 ```
  
 ```{r, include = FALSE}
-# Import suspicious ID file
-sus_id <- read_csv("sus-id.csv")
-```
-
-```{r, include = FALSE}
 # Add column that specifies day of message and convert "from" column to character type to match "to"
 fri_comm$day = "Fri"
 sat_comm$day = "Sat"
@@ -58,60 +56,82 @@ all_comm <- rbind(fri_comm, sat_comm, sun_comm)
 ```
 
 ```{r}
-# df with "from" and "to" IDs only
+# Show only the IDs associated with the message
 comm_only <- all_comm %>% 
   select(from, to)
 ```
 
-
 ```{r}
-# Create dfs with number of messages from a specific ID to another ID
-fri_from_to_count <- fri_comm %>% 
-  group_by(from) %>% 
-  count(from,to)
-
-sat_from_to_count <- sat_comm %>% 
-  group_by(from) %>% 
-  count(from,to)
-
-sun_from_to_count <- sun_comm %>% 
-  group_by(from) %>% 
-  count(from,to)
-```
-
-```{r}
-# Create df with number of messages from a specific ID to another ID for all messages
+# Number of messages from a specific ID to another ID for all messages
 all_from_to_count <- all_comm %>% 
   group_by(from, day) %>% 
   count(from,to)
+
+# Interesting though not incredibly helpful
 ```
 
 ```{r}
-# Create df with number of messages sent from each ID each day
-id_count <- all_comm %>% 
-  group_by(from, day) %>% 
-  count(from)
-```
-
-```{r}
-# df with all messages sent by suspicious IDs
-sus_id_comm <- all_comm %>%
-  filter(all_comm$from %in% sus_id$id | all_comm$to %in% sus_id$id)
-```
-
-
-```{r}
-# View all unique IDs with frequency
+# Number of messages sent from each ID 
 unique_id_freq <- as.data.frame(table(unlist(comm_only))) %>% 
   arrange(desc(Freq))
 head(unique_id_freq, 10)
+
+# How the ID 1278894 was found (see more below)
 ```
 
+```{r}
+# Plots number of messages sent at a specific timestamp
+all_timestamp_count <- all_comm %>% 
+  group_by(Timestamp, day) %>% 
+  count(Timestamp)
+
+all_days_count <- ggplot(data = all_timestamp_count, mapping = aes(x = Timestamp, y = n)) + 
+  geom_point(col = "darkred") +
+  gghighlight(n >= 500 & n <= 2000,
+              unhighlighted_params = list(alpha("steelblue", 0.4))) + 
+  facet_wrap(~day, scales = "free_x")
+
+all_days_count
+
+# Note similar patterns in high number of messages sent at once, even though the numbers themselves are different)
+```
+
+```{r}
+# Plots of message count sent by ID 1278894
+  # ID 1278894 must be some kind of mass communication number for the park for sharing info w/ guests and guests asking for info (also see chunk below)
+from_id_1278894 <- all_comm %>%
+  group_by(Timestamp, day) %>% 
+  filter(from == "1278894") %>% 
+  count(Timestamp)
+
+plotfrom_id_1278894 <- ggplot(from_id_1278894, aes(x = Timestamp, y = n)) +
+  geom_point() + 
+  facet_wrap(~day, scale = "free_x")
+
+plotfrom_id_1278894
+
+# Notice very similar shape to highlighted data points in all_days_count plot
+```
+
+```{r}
+# Plots of message count sent to ID 1278894
+to_id_1278894 <- all_comm %>% 
+  group_by(Timestamp, day) %>% 
+  filter(to == "1278894") %>% 
+  count(Timestamp)
+
+plotto_id_1278894 <- ggplot(to_id_1278894, aes(x = Timestamp, y = n)) +
+  geom_point() + 
+  facet_wrap(~day, scale = "free_x")
+
+plotto_id_1278894
+# Notice interesting blocks
+```
 
 ```{r}
 # List of IDs sending messages but not receiving 
-sending_notreceiving <- comm_only %>%
-  filter(!(comm_only$from %in% comm_only$to))
+sending_notreceiving <- all_comm %>%
+  filter(!(all_comm$from %in% all_comm$to))
   
 # List of IDs receiving messages but not sending
 receiving_notsending <- comm_only %>% 
@@ -120,90 +140,101 @@ receiving_notsending <- comm_only %>%
 ```
 
 ```{r}
-# ID 1278894 must be some kind of mass communication number for the park for sharing info w/ guests and guests asking for info ex. mass text at 2045 (845pm) - likely 15 min to closing notice (assumption, not guaranteed and )
+# Info about ID 946866
+id_946866messages <- sending_notreceiving %>% 
+  filter(from == "946866")
+head(id_946866messages)
+# Notice 1 message on Sat and 5 on Sun and all are external (and didn't receive any themself); also that messages sent around time of suspected time of crime and/or closure at Wet Land area which countains part of Pavillion
 
-to_id_1278894 <- all_comm %>% 
-  filter(to == "1278894")
+id_946866sat_movement <- sat_movement %>% 
+  filter(id == 946866)
 
-from_id_1278894 <- all_comm %>%
-  filter(from == "1278894")
+id_946866sun_movement <- sun_movement %>% 
+  filter(id == 946866)
 
-from1278894 <- from_id_1278894 %>% 
-  filter(day == "Sun") %>% 
+# Suspicious ID Sat movement
+p_id_946866sat <- ggplot(data = id_946866sat_movement, aes(x = X, y = Y)) + 
+  geom_point()
+p_id_946866sat
+
+p_id_946866sat2 <- ggplot(data = id_946866sat_movement, aes(x = X, y = Y)) + 
+  geom_point(alpha = .4)
+p_id_946866sat2
+
+p_id_946866sat3 <- ggplot(data = id_946866sat_movement, aes(x = X, y = Y)) + 
+  geom_point(alpha = .4) + 
+  facet_wrap(~hour(Timestamp))
+p_id_946866sat3
+
+
+# Suspicious ID Sun movement
+p_id_946866sun <- ggplot(data = id_946866sun_movement, aes(x = X, y = Y)) + 
+  geom_point()
+p_id_946866sun
+
+p_id_946866sun2 <- ggplot(data = id_946866sun_movement, aes(x = X, y = Y)) + 
+  geom_point(alpha = .4)
+p_id_946866sun2
+
+p_id_946866sun3 <- ggplot(data = id_946866sun_movement, aes(x = X, y = Y)) + 
+  geom_point(alpha = .4) + 
+  facet_wrap(~hour(Timestamp))
+p_id_946866sun3
+
+
+# Conclusion: didn't actually go near pavillion entrance
+```
+
+```{r}
+# Plotting check-in times for Creighton Pavillion
+  # Poor quality graphs but notice changes in both axes for all three plots 
+repeat_ids_sunpavillion <- sun_movement %>% 
+  filter(X == 32, Y == 33, type == "check-in") %>% 
+  group_by(id) %>% 
+  filter(n() > 2)
+View(repeat_ids_sunpavillion)
+
+fripavilion_checkin <- fri_movement %>% 
+  filter(X == 32, Y == 33, type == "check-in") %>% 
   count(Timestamp)
 
-plotfrom_id_1278894 <- ggplot(from1278894, aes(x = Timestamp, y = n)) +
-  geom_point()
-
-# ggplotly(plotfrom_id_1278894)
-```
-
-```{r}
-# ID 821721: potentially a group leader or something
-id_821721 <- all_comm %>% 
-  filter(from == "821721")
-
-id821721 <- id_821721 %>%
+satpavilion_checkin <- sat_movement %>% 
+  filter(X == 32, Y == 33, type == "check-in") %>% 
   count(Timestamp)
 
-plot_id821721 <- ggplot(id821721, aes(x = Timestamp, y = n)) + 
-  geom_point()
-
-# ggplotly(plot_id821721)
-```
-
-
-```{r}
-fri_timestamp_count <- fri_comm %>% 
+sunpavilion_checkin <- sun_movement %>% 
+  filter(X == 32, Y == 33, type == "check-in") %>% 
   count(Timestamp)
 
-fri <- ggplot(data = fri_timestamp_count, mapping = aes(x = Timestamp, y = n)) +
-  geom_point()
 
-# ggplotly(fri)
+
+fripavilion_checkinplot <- ggplot(fripavilion_checkin, aes(x = Timestamp, y = n)) +
+  geom_point()
+fripavilion_checkinplot
+
+satpavilion_checkinplot <- ggplot(satpavilion_checkin, aes(x = Timestamp, y = n)) +
+  geom_point()
+satpavilion_checkinplot
+
+sunpavilion_checkinplot <- ggplot(sunpavilion_checkin, aes(x = Timestamp, y = n)) +
+  geom_point()
+sunpavilion_checkinplot
 ```
 
 ```{r}
-sat_timestamp_count <- sat_comm %>% 
+# Pavillion where crime occurs has entrance in Wet Land, so filtered those messages
+wetlandcomm <- all_comm %>% 
+  filter(location == "Wet Land") %>% 
+  group_by(day) %>% 
   count(Timestamp)
 
-sat <- ggplot(data = sat_timestamp_count, mapping = aes(x = Timestamp, y = n)) +
-  geom_point()
+wetlandcommplot <- ggplot(wetlandcomm, aes(x = Timestamp, y = n)) +
+  geom_point() + 
+  facet_wrap(~day, scales = "free_x", nrow = 3) +
+  ylim(NA, 50)
 
-# ggplotly(sat)
-```
-
-
-```{r}
-sun_timestamp_count <- sun_comm %>% 
-  count(Timestamp)
-
-sun <- ggplot(data = sun_timestamp_count, mapping = aes(x = Timestamp, y = n)) +
-  geom_point()
-
-#ggplotly(sun)
-```
-
-
-```{r}
-# Pavillion where crime occurs straddles Coaster Alley and Wet Land, so filtered those messages
-coaster_wetland <- all_comm %>% 
-  filter(location == "Coaster Alley" | location == "Wet Land")
-
-```
-
-```{r}
-coasterwetland_comm <- coaster_wetland %>% 
-  filter(day == "Sun") %>% 
-  count(Timestamp)
-```
-
-```{r}
-cwcomm <- ggplot(coasterwetland_comm, aes(x = Timestamp, y = n)) +
-  geom_point()
-
-# ggplotly(cwcomm)
-# Notice weird cutout around noon at bottom (not present on any other days or at any other times)
+wetlandcommplot
+# Notice weird cutout around noon on Sunday (not present on any other days or at any other times) (purposefully chopped y-axis to better show the phenomenon)
 ```
 
 
@@ -233,13 +264,13 @@ n_occur_and_group_size <- group_ids %>%
   group_by(group) %>% 
   mutate(group_size = str_count(group, ",") + 1)
 
-# Try and list days messages sent
-# Try and find if smaller group IDs part of larger one
+# Note: Unfortunately the ID strings are not commuatative and I didn't have time to try and figure it out so 100025, 1010003 and 1010003, 100025 are listed separately; also didn't have time to try and link subsets of groups
 
 View(n_occur_and_group_size)
 ```
 
 ```{r}
+# Communications around time when crime is thought to have occured
 comm11to12sun <- sun_comm %>% 
   filter((hour(Timestamp) >= 11 & hour(Timestamp) <= 12) & (location == "Wet Land" | location == "Coaster Alley") )
 View(comm11to12sun)
