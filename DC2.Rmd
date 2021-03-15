@@ -1,0 +1,249 @@
+---
+title: "Data Challenge #2"
+author: "Abbie Benfield"
+date: "3/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(timetk)
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+```
+
+```{r, include = FALSE}
+# Import movement files
+fri_movement <- read_csv("park-movement-Fri.csv",
+                         col_types = cols(Timestamp = col_datetime(format = "%Y-%m-%d %H:%M:%S\t")))
+
+sat_movement <- read_csv("park-movement-Sat.csv",
+                         col_types = cols(Timestamp = col_datetime(format = "%Y-%m-%d %H:%M:%S\t")))
+
+sun_movement <- read_csv("park-movement-Sun.csv",
+                         col_types = cols(Timestamp = col_datetime(format = "%Y-%m-%d %H:%M:%S\t")))
+```
+
+```{r, include = FALSE}
+# Import communication files
+fri_comm <- read_csv("comm-data-Fri.csv",
+                     col_types = cols(Timestamp = col_datetime(format = "%Y-%m-%d %H:%M:%S\t")))
+
+sat_comm <- read_csv("comm-data-Sat.csv",
+                     col_types = cols(Timestamp = col_datetime(format = "%Y-%m-%d %H:%M:%S\t")))
+
+sun_comm <- read_csv("comm-data-Sun.csv",
+                     col_types = cols(Timestamp = col_datetime(format = "%Y-%m-%d %H:%M:%S\t")))
+```
+ 
+```{r, include = FALSE}
+# Import suspicious ID file
+sus_id <- read_csv("sus-id.csv")
+```
+
+```{r, include = FALSE}
+# Add column that specifies day of message and convert "from" column to character type to match "to"
+fri_comm$day = "Fri"
+sat_comm$day = "Sat"
+sun_comm$day = "Sun"
+fri_comm$from = as.character(fri_comm$from)
+sat_comm$from = as.character(sat_comm$from)
+sun_comm$from = as.character(sun_comm$from)
+```
+
+```{r}
+# Combine all communication files into 1 df
+all_comm <- rbind(fri_comm, sat_comm, sun_comm)
+```
+
+```{r}
+# df with "from" and "to" IDs only
+comm_only <- all_comm %>% 
+  select(from, to)
+```
+
+
+```{r}
+# Create dfs with number of messages from a specific ID to another ID
+fri_from_to_count <- fri_comm %>% 
+  group_by(from) %>% 
+  count(from,to)
+
+sat_from_to_count <- sat_comm %>% 
+  group_by(from) %>% 
+  count(from,to)
+
+sun_from_to_count <- sun_comm %>% 
+  group_by(from) %>% 
+  count(from,to)
+```
+
+```{r}
+# Create df with number of messages from a specific ID to another ID for all messages
+all_from_to_count <- all_comm %>% 
+  group_by(from, day) %>% 
+  count(from,to)
+```
+
+```{r}
+# Create df with number of messages sent from each ID each day
+id_count <- all_comm %>% 
+  group_by(from, day) %>% 
+  count(from)
+```
+
+```{r}
+# df with all messages sent by suspicious IDs
+sus_id_comm <- all_comm %>%
+  filter(all_comm$from %in% sus_id$id | all_comm$to %in% sus_id$id)
+```
+
+
+```{r}
+# View all unique IDs with frequency
+unique_id_freq <- as.data.frame(table(unlist(comm_only))) %>% 
+  arrange(desc(Freq))
+head(unique_id_freq, 10)
+```
+
+
+```{r}
+# List of IDs sending messages but not receiving 
+sending_notreceiving <- comm_only %>%
+  filter(!(comm_only$from %in% comm_only$to))
+  
+# List of IDs receiving messages but not sending
+receiving_notsending <- comm_only %>% 
+  filter(!(comm_only$to %in% comm_only$from) & comm_only$to != "external")
+  # All to external numbers (62,000 external messages)
+```
+
+```{r}
+# ID 1278894 must be some kind of mass communication number for the park for sharing info w/ guests and guests asking for info ex. mass text at 2045 (845pm) - likely 15 min to closing notice (assumption, not guaranteed and )
+
+to_id_1278894 <- all_comm %>% 
+  filter(to == "1278894")
+
+from_id_1278894 <- all_comm %>%
+  filter(from == "1278894")
+
+from1278894 <- from_id_1278894 %>% 
+  filter(day == "Sun") %>% 
+  count(Timestamp)
+
+plotfrom_id_1278894 <- ggplot(from1278894, aes(x = Timestamp, y = n)) +
+  geom_point()
+
+# ggplotly(plotfrom_id_1278894)
+```
+
+```{r}
+# ID 821721: potentially a group leader or something
+id_821721 <- all_comm %>% 
+  filter(from == "821721")
+
+id821721 <- id_821721 %>%
+  count(Timestamp)
+
+plot_id821721 <- ggplot(id821721, aes(x = Timestamp, y = n)) + 
+  geom_point()
+
+# ggplotly(plot_id821721)
+```
+
+
+```{r}
+fri_timestamp_count <- fri_comm %>% 
+  count(Timestamp)
+
+fri <- ggplot(data = fri_timestamp_count, mapping = aes(x = Timestamp, y = n)) +
+  geom_point()
+
+# ggplotly(fri)
+```
+
+```{r}
+sat_timestamp_count <- sat_comm %>% 
+  count(Timestamp)
+
+sat <- ggplot(data = sat_timestamp_count, mapping = aes(x = Timestamp, y = n)) +
+  geom_point()
+
+# ggplotly(sat)
+```
+
+
+```{r}
+sun_timestamp_count <- sun_comm %>% 
+  count(Timestamp)
+
+sun <- ggplot(data = sun_timestamp_count, mapping = aes(x = Timestamp, y = n)) +
+  geom_point()
+
+#ggplotly(sun)
+```
+
+
+```{r}
+# Pavillion where crime occurs straddles Coaster Alley and Wet Land, so filtered those messages
+coaster_wetland <- all_comm %>% 
+  filter(location == "Coaster Alley" | location == "Wet Land")
+
+```
+
+```{r}
+coasterwetland_comm <- coaster_wetland %>% 
+  filter(day == "Sun") %>% 
+  count(Timestamp)
+```
+
+```{r}
+cwcomm <- ggplot(coasterwetland_comm, aes(x = Timestamp, y = n)) +
+  geom_point()
+
+# ggplotly(cwcomm)
+# Notice weird cutout around noon at bottom (not present on any other days or at any other times)
+```
+
+
+```{r}
+# Condenses communication so that one message sent at same timestamp by 1 ID lists all of the to IDs in one row
+group_message_filter <- all_comm %>% 
+  group_by(Timestamp, from, day) %>% 
+  summarize(to = paste(to, collapse = ", ")) %>% 
+  mutate(group = "")
+
+group_message_filter$group <- paste(group_message_filter$from, group_message_filter$to, sep = ", ")
+
+
+# Lists all IDs (both from and to) in one row
+group_ids <- group_message_filter %>%
+  select(group, day) %>% 
+  mutate(Timestamps = "") %>% 
+  mutate(days = "")
+
+# Lists number of different messages within total group and the total number of IDs in that group
+n_occur_and_group_size <- group_ids %>% 
+  group_by(group) %>% 
+  summarize(Timestamps = paste(Timestamp, collapse = ", ")) %>%
+  group_by(Timestamps) %>% 
+  # Number of Timestamps/IDs is the number of commas + 1
+  mutate(n_occur = str_count(Timestamps, ",") + 1) %>% 
+  group_by(group) %>% 
+  mutate(group_size = str_count(group, ",") + 1)
+
+# Try and list days messages sent
+# Try and find if smaller group IDs part of larger one
+
+View(n_occur_and_group_size)
+```
+
+```{r}
+comm11to12sun <- sun_comm %>% 
+  filter((hour(Timestamp) >= 11 & hour(Timestamp) <= 12) & (location == "Wet Land" | location == "Coaster Alley") )
+View(comm11to12sun)
+```
+
+
+
