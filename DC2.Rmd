@@ -209,13 +209,16 @@ sunpavilion_checkin <- sun_movement %>%
 
 
 fripavilion_checkinplot <- ggplot(fripavilion_checkin, aes(x = Timestamp, y = n)) +
-  geom_point()
-  
+  geom_point() +
+  labs(title = "Fri")
+
 satpavilion_checkinplot <- ggplot(satpavilion_checkin, aes(x = Timestamp, y = n)) +
-  geom_point()
+  geom_point() +
+  labs(title = "Sat")
 
 sunpavilion_checkinplot <- ggplot(sunpavilion_checkin, aes(x = Timestamp, y = n)) +
-  geom_point()
+  geom_point() +
+  labs(title = "Sun")
 
 all_pavillion_checkinplots <- grid.arrange(fripavilion_checkinplot, satpavilion_checkinplot, sunpavilion_checkinplot)
 all_pavillion_checkinplots
