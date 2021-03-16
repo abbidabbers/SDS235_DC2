@@ -1,7 +1,7 @@
 ---
 title: "Data Challenge #2"
-author: "Abbie Benfield"
-date: "3/11/2021"
+author: "Abbie Benfield, Carol Milton, Esa Schenck, Nage Ngo"
+date: "3/16/2021"
 output: html_document
 ---
 
