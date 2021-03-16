@@ -295,3 +295,38 @@ larger_group_data <- final_group_data %>%
 comm11to12sun <- sun_comm %>% 
   filter((hour(Timestamp) >= 11 & hour(Timestamp) <= 12) & (location == "Wet Land" | location == "Coaster Alley") )
 ```
+
+
+Trying to Create Clusters in Movement Data
+```{python}
+import pandas as pd
+import sklearn
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.neighbors import NearestNeighbors
+from sklearn.cluster import DBSCAN
+
+moveFri = pd.read_csv("park-movement-Fri.csv")
+moveSat = pd.read_csv("park-movement-Sat.csv")
+moveSun = pd.read_csv("park-movement-Sun.csv")
+
+commFri = pd.read_csv("comm-data-Fri.csv")
+commSat = pd.read_csv("comm-data-Sat.csv")
+commSun = pd.read_csv("comm-data-Sun.csv")
+
+# Must combine movement data and then combine communication data
+
+# Estimating DBSCAN epsilon
+db = DBSCAN(eps=0.5, min_samples=10).fit(x)
+
+# Trying to find accurate epsilon value
+# Code mostly based on https://towardsdatascience.com/how-to-use-dbscan-effectively-ed212c02e62
+nearest_neighbors = NearestNeighbors(n_neighbors=11)
+neighbors = nearest_neighbors.fit(x)
+distances, indices = neighbors.kneighbors(x)
+distances = np.sort(distances[:,10], axis=0)
+fig = plt.figure(figsize=(5, 5))
+plt.plot(distances)
+plt.xlabel("Points")
+plt.ylabel("Distance")
+```
