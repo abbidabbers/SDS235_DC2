@@ -269,8 +269,6 @@ n_occur_and_group_size <- group_ids %>%
   group_by(group) %>% 
   mutate(group_size = str_count(group, ",") + 1)
 
-# Note: Unfortunately the ID strings are not commutative and I didn't have time to try and figure it out so 100025, 1010003 and 1010003, 100025 are listed separately; also didn't have time to try and link subsets of groups
-
 # EXTERNAL NUMBERS BECOME 0 because it can only interpret numbers
 n_occur_and_group_size$ordered_groups = group_data$ordered_group
 
