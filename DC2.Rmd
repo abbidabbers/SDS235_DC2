@@ -298,6 +298,7 @@ comm11to12sun <- sun_comm %>%
 
 
 Trying to Create Clusters in Movement Data
+
 ```{python}
 import pandas as pd
 import sklearn
